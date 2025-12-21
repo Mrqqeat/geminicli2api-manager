@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="no-referrer">
+    <title>Gemini Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+    <style>
+        :root { --primary: #4f46e5; }
+        body { 
+            background-color: #f1f5f9; 
+            font-family: 'Inter', system-ui, sans-serif;
+            color: #0f172a;
+            -webkit-font-smoothing: antialiased;
+        }
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+        
+        .glass-nav {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+        }
+
+        .spinner {
+            width: 44px; height: 44px;
+            border: 4px solid #e2e8f0; border-top-color: var(--primary);
+            border-radius: 50%; animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        .card-enter {
+            animation: slideUp 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+            opacity: 0; transform: translateY(20px);
+        }
+        @keyframes slideUp { to { opacity: 1; transform: translateY(0); } }
+
+        .tab-btn.active { border-bottom: 2px solid var(--primary); color: var(--primary); }
+        .sortable-ghost { opacity: 0.4; background: #f1f5f9; border: 2px dashed #cbd5e1; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col pb-10">
+
+    <nav class="glass-nav sticky top-0 z-50">
+        <div class="container mx-auto px-6 h-20 flex justify-between items-center max-w-7xl">
+            <div class="flex items-center gap-4">
+                <div class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-indigo-200">
+                    <i class="fa-solid fa-layer-group text-lg"></i>
+                </div>
+                <h1 class="text-xl font-bold text-slate-900">Gemini Manager</h1>
+            </div>
+            
+            <div class="flex gap-8 text-base font-bold">
+                <button onclick="switchTab('servers')" id="tab-servers" class="tab-btn active px-2 py-6 transition-colors">代理服务管理</button>
+                <button onclick="switchTab('quota')" id="tab-quota" class="tab-btn px-2 py-6 transition-colors text-slate-500 hover:text-slate-700">额度监控</button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container mx-auto px-6 py-8 max-w-7xl">
+        
+        <!-- View: Servers (Optimized Style) -->
+        <div id="view-servers" class="space-y-8">
+            <div class="flex justify-between items-center">
+                <h2 class="text-2xl font-bold text-slate-800">代理服务列表</h2>
+                <button onclick="initAdd()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-sm transition-transform active:scale-95 flex items-center gap-2">
+                    <i class="fa-solid fa-plus"></i>添加服务
+                </button>
+            </div>
+            <div id="server-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+        </div>
+
+        <!-- View: Quota (Original Style) -->
+        <div id="view-quota" class="hidden space-y-6">
+            <div class="flex justify-between items-center">
+                <div class="hidden md:flex items-center gap-6 text-sm font-medium text-slate-600 bg-white/80 px-5 py-2 rounded-full border border-slate-200 shadow-sm backdrop-blur-sm">
+					<!-- Pro Model Legend -->
+					<div class="flex items-center gap-2.5" title="每日上限：普通 100 / Pro会员 250">
+						<div class="w-6 h-6 rounded bg-indigo-50 flex items-center justify-center border border-indigo-100">
+							<i class="fa-solid fa-star text-indigo-500 text-xs"></i>
+						</div>
+						<div class="flex flex-col leading-none gap-0.5">
+							<span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Pro Model</span>
+							<div class="font-mono font-bold">
+								<span class="text-slate-700">100</span>
+								<span class="text-slate-300 mx-0.5">/</span>
+								<span class="bg-gradient-to-r from-indigo-500 to-purple-600 text-transparent bg-clip-text">250</span>
+							</div>
+						</div>
+					</div>
+
+					<span class="w-px h-6 bg-slate-200"></span>
+
+					<!-- Flash Model Legend -->
+					<div class="flex items-center gap-2.5" title="每日上限：普通 1000 / Pro会员 1500">
+						<div class="w-6 h-6 rounded bg-amber-50 flex items-center justify-center border border-amber-100">
+							<i class="fa-solid fa-bolt text-amber-500 text-xs"></i>
+						</div>
+						<div class="flex flex-col leading-none gap-0.5">
+							<span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Flash Model</span>
+							<div class="font-mono font-bold">
+								<span class="text-slate-700">1.0k</span>
+								<span class="text-slate-300 mx-0.5">/</span>
+								<span class="bg-gradient-to-r from-indigo-500 to-purple-600 text-transparent bg-clip-text">1.5k</span>
+							</div>
+						</div>
+					</div>
+				</div>
+                <button onclick="loadAllQuotas(true)" class="bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 font-bold px-6 py-2.5 rounded-xl text-sm shadow-sm transition-transform active:scale-95 flex items-center gap-2.5">
+                    <i class="fa-solid fa-rotate-right text-indigo-600"></i> 刷新
+                </button>
+            </div>
+            
+            <div id="quota-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+        </div>
+
+    </main>
+
+    <!-- Modal: Edit/Add -->
+    <div id="modal-add" class="fixed inset-0 bg-black/50 hidden items-center justify-center backdrop-blur-sm z-[100]">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-8 transform transition-all scale-100">
+            <div class="flex justify-between items-center mb-6">
+                <h3 id="modal-title" class="text-xl font-bold text-slate-800">添加配置</h3>
+                <button type="button" onclick="closeModal()" class="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <form id="server-form" onsubmit="handleFormSubmit(event)" autocomplete="off" class="space-y-5">
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">服务名称</label>
+                    <input type="text" name="name" autocomplete="off" required class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all font-medium">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">凭证文件 (tokens/)</label>
+                    <div class="relative">
+                        <select name="token_file" id="token-select" required class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all appearance-none font-medium"></select>
+                        <i class="fa-solid fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
+                    </div>
+                </div>
+                
+                <!-- Project ID 列表管理 -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Google Cloud Project ID</label>
+                    <div class="flex gap-2 mb-3">
+                        <div class="relative flex-1">
+                            <select id="pid-select" name="project_id" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all appearance-none font-medium text-slate-700"></select>
+                            <i class="fa-solid fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
+                        </div>
+                        <button type="button" onclick="removePid()" class="px-4 py-3 text-red-500 hover:bg-red-50 border border-red-100 rounded-xl transition-colors" title="删除当前ID"><i class="fa-solid fa-trash"></i></button>
+                    </div>
+                    <div class="flex gap-2">
+                        <input type="text" id="new-pid-input" placeholder="输入新的 Project ID" class="flex-1 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all">
+                        <button type="button" onclick="addPid()" class="px-5 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-bold transition-colors">添加</button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">端口</label>
+                        <input type="number" name="port" required class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all font-mono font-medium">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">密码</label>
+                        <input type="text" name="password" required value="123456" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all font-mono font-medium">
+                    </div>
+                </div>
+                
+                <div class="flex items-center gap-3 bg-purple-50 p-4 rounded-xl border border-purple-100 mt-2 cursor-pointer" onclick="document.getElementById('is_pro').click()">
+                    <input id="is_pro" name="is_pro" type="checkbox" class="w-5 h-5 text-purple-600 rounded focus:ring-purple-500 border-purple-200 cursor-pointer">
+                    <label for="is_pro" class="font-bold text-purple-700 text-sm cursor-pointer select-none">这是 Gemini Advanced (Pro) 账号</label>
+                </div>
+
+                <div class="pt-6 flex justify-end gap-3 border-t border-slate-100 mt-6">
+                    <button type="button" onclick="closeModal()" class="px-6 py-3 text-slate-600 hover:bg-slate-50 rounded-xl font-bold transition-colors">取消</button>
+                    <button type="submit" class="px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-lg shadow-indigo-200 transition-all hover:-translate-y-0.5 active:translate-y-0">保存配置</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let currentServers = [];
+        let currentProjectIds = [];
+        let sortableInstance = null;
+        let editId = null;
+
+        window.addEventListener('DOMContentLoaded', () => {
+            loadServers();
+        });
+
+        function switchTab(tab) {
+			document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active', 'text-indigo-600'));
+			document.querySelectorAll('.tab-btn').forEach(b => b.classList.add('text-slate-500'));
+			document.getElementById(`tab-${tab}`).classList.add('active');
+			document.getElementById(`tab-${tab}`).classList.remove('text-slate-500');
+			
+			document.getElementById('view-servers').classList.add('hidden');
+			document.getElementById('view-quota').classList.add('hidden');
+			document.getElementById(`view-${tab}`).classList.remove('hidden');
+
+			if (tab === 'servers') loadServers();
+			if (tab === 'quota') loadAllQuotas(false); // 切换时不强制刷新 API
+		}
+
+        // --- Project ID 管理 ---
+        function renderPidSelect(selectedId) {
+            const select = document.getElementById('pid-select');
+            select.innerHTML = currentProjectIds.map(id => 
+                `<option value="${id}" ${id === selectedId ? 'selected' : ''}>${id}</option>`
+            ).join('');
+        }
+        function addPid() {
+            const input = document.getElementById('new-pid-input');
+            const val = input.value.trim();
+            if (val && !currentProjectIds.includes(val)) {
+                currentProjectIds.push(val);
+                renderPidSelect(val);
+                input.value = '';
+            }
+        }
+        function removePid() {
+            const select = document.getElementById('pid-select');
+            const val = select.value;
+            if (val) {
+                currentProjectIds = currentProjectIds.filter(id => id !== val);
+                renderPidSelect(currentProjectIds[0]);
+            }
+        }
+
+        // --- 服务器管理 (大卡片样式) ---
+        async function loadServers() {
+            const res = await fetch('/api/servers');
+            currentServers = await res.json();
+            const container = document.getElementById('server-list');
+            
+            if (!currentServers.length) {
+                container.innerHTML = `<div class="col-span-full text-center py-20 text-slate-400 bg-white rounded-2xl border border-dashed border-slate-300">暂无配置，请点击右上角添加服务</div>`;
+                return;
+            }
+
+            container.innerHTML = currentServers.map(s => {
+                const isRun = s.status === 'running';
+                return `
+                <div class="card-enter bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 p-6 group relative" data-id="${s.id}">
+                    <div class="flex justify-between items-start mb-5">
+                        <!-- 左侧：标题与Pro标签 -->
+                        <div class="min-w-0 flex-1 mr-4">
+                            <div class="flex items-center gap-2 mb-1">
+                                <h3 class="font-bold text-xl text-slate-900 truncate" title="${s.name}">${s.name}</h3>
+                                ${s.is_pro ? '<span class="shrink-0 inline-flex items-center gap-1 rounded bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 px-2 py-0.5 text-[10px] font-bold text-white shadow-sm ring-1 ring-inset ring-purple-500/10">PRO</span>' : ''}
+                            </div>
+                        </div>
+
+                        <!-- 右侧：按钮组与状态 -->
+                        <div class="flex items-center gap-3 shrink-0">
+                            <!-- 控制按钮组 (默认隐藏，Hover显示) -->
+                            <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                                <div class="handle cursor-grab w-7 h-7 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors"><i class="fa-solid fa-grip-vertical text-sm"></i></div>
+                                <button onclick='initEdit("${s.id}")' class="w-7 h-7 rounded-lg hover:bg-indigo-50 flex items-center justify-center text-slate-400 hover:text-indigo-600 transition-colors"><i class="fa-solid fa-pen-to-square text-sm"></i></button>
+                                <button onclick="deleteServer('${s.id}')" class="w-7 h-7 rounded-lg hover:bg-red-50 flex items-center justify-center text-slate-400 hover:text-red-600 transition-colors"><i class="fa-solid fa-trash text-sm"></i></button>
+                            </div>
+                            
+                            <!-- 状态标签 -->
+                            <span id="status-${s.id}" class="px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5 ${isRun?'bg-emerald-100 text-emerald-700':'bg-slate-100 text-slate-500'}">
+                                <span class="w-2 h-2 rounded-full ${isRun?'bg-emerald-500 animate-pulse':'bg-slate-400'}"></span>
+                                <span class="status-text">${isRun ? '运行中' : '已停止'}</span>
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- 信息区域 (Project ID 不再限制宽度) -->
+                    <div class="font-mono text-sm text-slate-500 space-y-3 mb-6">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-400 shrink-0 border border-slate-100"><i class="fa-brands fa-google text-xs"></i></div>
+                            <span class="truncate font-medium select-all" title="${s.project_id}">${s.project_id}</span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-400 shrink-0 border border-slate-100"><i class="fa-solid fa-network-wired text-xs"></i></div>
+                            <span class="font-semibold text-slate-600">${s.port}</span>
+                        </div>
+                    </div>
+
+                    <button onclick="${isRun ? `stopServer('${s.id}')` : `startServer('${s.id}')`}" 
+                        class="w-full py-3.5 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2.5 active:scale-[0.98]
+                        ${isRun ? 'bg-rose-50 text-rose-600 hover:bg-rose-100' : 'bg-slate-900 text-white hover:bg-slate-800 shadow-lg shadow-slate-200'}">
+                        <i class="fa-solid ${isRun ? 'fa-power-off' : 'fa-play'}"></i> ${isRun ? '停止服务' : '启动服务'}
+                    </button>
+                </div>`;
+            }).join('');
+
+            if (sortableInstance) sortableInstance.destroy();
+            sortableInstance = new Sortable(container, {
+                handle: '.handle', animation: 150, ghostClass: 'sortable-ghost',
+                onEnd: () => {
+                    const ids = Array.from(container.children).map(el => el.getAttribute('data-id'));
+                    fetch('/api/servers/reorder', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(ids) });
+                }
+            });
+        }
+
+        async function initAdd() {
+            editId = null;
+            document.getElementById('modal-title').innerText = "添加配置";
+            document.getElementById('server-form').reset();
+            currentProjectIds = [];
+            renderPidSelect();
+            await loadTokens();
+            document.getElementById('modal-add').classList.replace('hidden', 'flex');
+        }
+
+        async function initEdit(id) {
+            editId = id;
+            const s = currentServers.find(x => x.id === id);
+            document.getElementById('modal-title').innerText = "编辑配置";
+            const form = document.getElementById('server-form');
+            form.name.value = s.name;
+            form.port.value = s.port;
+            form.password.value = s.password;
+            form.is_pro.checked = s.is_pro || false;
+            
+            currentProjectIds = s.project_ids || (s.project_id ? [s.project_id] : []);
+            renderPidSelect(s.project_id);
+            
+            await loadTokens(s.token_file);
+            document.getElementById('modal-add').classList.replace('hidden', 'flex');
+        }
+
+        async function loadTokens(selectedVal) {
+            const res = await fetch('/api/tokens');
+            const tokens = await res.json();
+            document.getElementById('token-select').innerHTML = tokens.map(t => 
+                `<option value="${t}" ${selectedVal===t?'selected':''}>${t}</option>`
+            ).join('');
+        }
+
+        function closeModal() { document.getElementById('modal-add').classList.replace('flex', 'hidden'); }
+
+        async function startServer(id) { 
+			const statusBadge = document.getElementById(`status-${id}`);
+			if(statusBadge) {
+				statusBadge.className = "px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5 bg-amber-100 text-amber-700";
+				statusBadge.innerHTML = `<span class="w-2 h-2 rounded-full bg-amber-500 animate-ping"></span><span class="status-text">启动中</span>`;
+			}
+			const res = await fetch(`/api/servers/${id}/start`, { method: 'POST' });
+			if (res.ok) {
+				await loadServers(); // 更新全局 currentServers 状态
+				// 只刷新这一张卡片
+				if (document.getElementById(`quota-card-${id}`)) {
+					fetchQuota(id);
+				}
+			}
+		}
+
+		async function stopServer(id) { 
+			if(confirm('确定要停止该服务吗？')) { 
+				const res = await fetch(`/api/servers/${id}/stop`, { method: 'POST' });
+				if (res.ok) {
+					await loadServers();
+					// 只刷新这一张卡片
+					if (document.getElementById(`quota-card-${id}`)) {
+						fetchQuota(id);
+					}
+				}
+			} 
+		}
+
+		async function handleFormSubmit(e) {
+			e.preventDefault();
+			const formData = new FormData(e.target);
+			const data = Object.fromEntries(formData.entries());
+			data.port = parseInt(data.port);
+			data.is_pro = document.getElementById('is_pro').checked;
+			data.project_ids = currentProjectIds;
+			data.project_id = document.getElementById('pid-select').value;
+
+			const url = editId ? `/api/servers/${editId}` : '/api/servers';
+			const method = editId ? 'PUT' : 'POST';
+
+			const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+			if(res.ok) { 
+				const targetId = editId;
+				closeModal(); 
+				await loadServers(); 
+				// 如果是编辑，只刷新受影响的那张卡片
+				if (targetId && document.getElementById(`quota-card-${targetId}`)) {
+					fetchQuota(targetId);
+				}
+			}
+		}
+
+		async function deleteServer(id) { 
+			if(confirm('确定要删除该配置吗？')) { 
+				const res = await fetch(`/api/servers/${id}`, { method: 'DELETE' }); 
+				if (res.ok) {
+					loadServers(); 
+					const card = document.getElementById(`quota-card-${id}`);
+					if (card) card.remove();
+				}
+			} 
+		}
+
+
+        // --- Quota 监控 (完全还原旧版样式) ---
+        function formatResetTime(isoString) {
+            if(!isoString) return '--:--';
+            const date = new Date(isoString);
+            const now = new Date();
+            const isTomorrow = date.getDate() !== now.getDate();
+            const timeStr = date.toLocaleTimeString('zh-CN', { hour12: false, hour: '2-digit', minute: '2-digit' });
+            return isTomorrow ? `明天 ${timeStr}` : timeStr;
+        }
+
+        function calculateQuota(modelId, fraction, isPro) {
+			const id = modelId.toLowerCase();
+            let total = 100;
+            if (id.includes('flash')) total = isPro ? 1500 : 1000;
+            else if (id.includes('pro')) total = isPro ? 250 : 100;
+            
+            // 原版逻辑：round
+            const effectiveFraction = fraction > 0.9999 ? 1 : fraction;
+            const remaining = Math.round(total * effectiveFraction);
+            return { total, remaining };
+        }
+
+        function renderQuotaItem(q, isPro) {
+            const percent = (q.remainingFraction * 100).toFixed(1);
+            const calc = calculateQuota(q.modelId, q.remainingFraction, isPro);
+            
+            let theme = { color: 'bg-emerald-500', text: 'text-emerald-700' };
+            if (q.remainingFraction < 0.2) theme = { color: 'bg-rose-500', text: 'text-rose-700' };
+            else if (q.remainingFraction < 0.5) theme = { color: 'bg-amber-500', text: 'text-amber-700' };
+
+            const cleanName = q.modelId.replace('gemini-', '');
+            const isProModel = cleanName.includes('pro');
+            const icon = isProModel 
+                ? `<i class="fa-solid fa-star text-indigo-500 text-sm"></i>` 
+                : `<i class="fa-solid fa-bolt text-amber-500 text-sm"></i>`;
+
+            return `
+            <div class="py-2.5 border-b border-slate-100 last:border-0 last:pb-0 hover:bg-slate-50 -mx-4 px-4 rounded-lg transition-colors group/item">
+                <div class="flex justify-between items-center mb-1">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center shadow-sm shrink-0">
+                            ${icon}
+                        </div>
+                        <span class="text-base font-bold text-slate-800 capitalize leading-none pt-0.5">
+                            ${cleanName}
+                        </span>
+                    </div>
+
+                    <div class="flex items-baseline gap-1.5">
+                        <span class="text-2xl font-extrabold ${theme.text} tabular-nums leading-none">${calc.remaining}</span>
+                        <span class="text-sm text-slate-400 font-semibold">/ ${calc.total}</span>
+                    </div>
+                </div>
+
+                <div class="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden mb-2">
+                    <div class="h-full rounded-full ${theme.color} transition-all duration-1000 shadow-sm" style="width: ${percent}%"></div>
+                </div>
+
+                <div class="flex justify-between items-center">
+                    <div class="flex items-center gap-2 bg-slate-100 px-2 py-0.5 rounded text-slate-500">
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">FRAC</span>
+                        <code class="text-[13px] font-mono text-slate-600 font-bold select-all leading-tight">
+                            ${q.remainingFraction}
+                        </code>
+                    </div>
+                    
+                    <div class="flex items-center gap-1.5 text-[13px] font-medium text-slate-500">
+                        <i class="fa-regular fa-clock text-slate-400 text-xs"></i>
+                        <span>${formatResetTime(q.resetTime)}</span>
+                    </div>
+                </div>
+            </div>`;
+        }
+		
+		let isRefreshing = false;
+		async function loadAllQuotas(force = false) {
+			if (isRefreshing) return;
+
+			const grid = document.getElementById('quota-grid');
+			const refreshBtn = document.querySelector('button[onclick="loadAllQuotas(true)"]');
+			const originalBtnHTML = refreshBtn ? refreshBtn.innerHTML : '';
+
+			// 获取服务器配置（如果尚未获取）
+			if (currentServers.length === 0) {
+				const res = await fetch('/api/servers');
+				currentServers = await res.json();
+			}
+
+			// 判断是否需要进行“加载/刷新”操作（数据量不匹配或用户强制刷新）
+			const isInitialLoad = grid.children.length !== currentServers.length;
+			const shouldLock = force || isInitialLoad;
+
+			if (shouldLock) {
+				isRefreshing = true;
+				if (refreshBtn) {
+					refreshBtn.disabled = true;
+					refreshBtn.innerHTML = `<i class="fa-solid fa-circle-notch animate-spin text-indigo-600"></i> 刷新中...`;
+				}
+			}
+
+			try {
+				if (isInitialLoad) {
+					// 情况 A: 初次进入或数量变化，显示骨架屏并全量加载
+					grid.innerHTML = currentServers.map(s => `
+						<div id="quota-card-${s.id}" class="card-enter bg-white rounded-2xl border border-slate-200 shadow-sm p-0 overflow-hidden animate-pulse">
+							<div class="px-5 py-3 bg-slate-100 border-b border-slate-200 flex items-center gap-3">
+								<div class="w-10 h-10 rounded-full bg-slate-300"></div>
+								<div class="flex-1 space-y-2"><div class="h-4 bg-slate-300 rounded w-1/2"></div></div>
+							</div>
+							<div class="p-4 space-y-4"><div class="h-14 bg-slate-200 rounded-lg"></div></div>
+						</div>`).join('');
+					
+					await Promise.all(currentServers.map((server, index) => {
+						return new Promise(resolve => {
+							setTimeout(async () => {
+								await fetchQuota(server.id);
+								resolve();
+							}, index * 100);
+						});
+					}));
+				} 
+				else if (force) {
+					// 情况 B: 用户手动点击刷新按钮
+					await Promise.all(currentServers.map(server => fetchQuota(server.id)));
+				} 
+				else {
+					// 情况 C: 仅仅是标签切换，不请求 API，只同步圆点
+					currentServers.forEach(s => {
+						const card = document.getElementById(`quota-card-${s.id}`);
+						if (card) {
+							const dot = card.querySelector('.relative.shrink-0 div:last-child');
+							if (dot) {
+								const isRunning = s.status === 'running';
+								dot.className = `absolute bottom-0 right-0 w-3 h-3 ${isRunning ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'} border-2 border-white rounded-full`;
+							}
+						}
+					});
+				}
+			} finally {
+				if (shouldLock) {
+					isRefreshing = false;
+					if (refreshBtn) {
+						refreshBtn.disabled = false;
+						refreshBtn.innerHTML = originalBtnHTML;
+					}
+				}
+			}
+		}
+
+        async function fetchQuota(serverId) {
+			const card = document.getElementById(`quota-card-${serverId}`);
+			
+			// 1. 在请求开始前，立即将该卡片内容转为骨架屏状态
+			if (card) {
+				// 保持外层 div 和 ID，只清空并填充骨架
+				card.classList.add('animate-pulse');
+				card.innerHTML = `
+					<div class="px-5 py-3 bg-slate-100 border-b border-slate-200 flex items-center gap-3">
+						<div class="w-10 h-10 rounded-full bg-slate-300"></div>
+						<div class="flex-1 space-y-2">
+							<div class="h-4 bg-slate-300 rounded w-1/2"></div>
+							<div class="h-3 bg-slate-300 rounded w-1/3"></div>
+						</div>
+					</div>
+					<div class="p-4 space-y-4">
+						<div class="h-14 bg-slate-200 rounded-lg"></div>
+						<div class="h-14 bg-slate-200 rounded-lg"></div>
+					</div>`;
+			}
+
+			try {
+				// 2. 进行 API 请求
+				const res = await fetch(`/api/servers/${serverId}/quota`);
+				const data = await res.json();
+				
+				// 获取该服务器最新的状态（以便渲染正确的运行圆点）
+				const serverInfo = currentServers.find(s => s.id === serverId);
+				const status = serverInfo ? serverInfo.status : 'stopped';
+				
+				// 3. 渲染真实数据并替换
+				const finalCard = document.getElementById(`quota-card-${serverId}`);
+				if (finalCard) {
+					const temp = document.createElement('div');
+					temp.innerHTML = createQuotaCard(data, status, serverId);
+					// 移除骨架屏动画类并替换
+					finalCard.replaceWith(temp.firstElementChild);
+				}
+			} catch (e) {
+				console.error(e);
+				const errorCard = document.getElementById(`quota-card-${serverId}`);
+				if (errorCard) {
+					errorCard.classList.remove('animate-pulse');
+					errorCard.innerHTML = `<div class="p-6 text-center text-red-500 font-bold">加载失败</div>`;
+				}
+			}
+		}
+
+        function createQuotaCard(acc, status, serverId) {
+			if(acc.status === 'error') {
+				return `
+				<div id="quota-card-${serverId}" class="card-enter bg-white rounded-2xl p-6 border border-red-100 shadow-sm flex items-start gap-4">
+					<div class="w-12 h-12 rounded-xl bg-red-50 flex items-center justify-center text-red-500 shrink-0">
+						<i class="fa-solid fa-triangle-exclamation"></i>
+					</div>
+					<div>
+						<h3 class="font-bold text-slate-900 text-base">${acc.filename}</h3>
+						<p class="text-red-600 text-sm mt-1">${acc.message}</p>
+					</div>
+				</div>`;
+			}
+
+			const { user, quotas, config_name, is_pro } = acc;
+			const isRunning = status === 'running';
+			const dotClass = isRunning ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300';
+			
+			const serverInfo = currentServers.find(s => s.id === serverId);
+			const projectId = serverInfo ? serverInfo.project_id : 'Unknown';
+			
+			const proBadge = is_pro 
+				? `<span class="inline-flex items-center rounded bg-indigo-600 px-1.5 py-0.5 text-[10px] font-black text-white ml-2 shadow-sm">PRO</span>` 
+				: '';
+
+			const quotasHtml = quotas
+				.filter(v => v.modelId != 'gemini-2.0-flash')
+				.map(q => renderQuotaItem(q, is_pro)) 
+				.join('');
+
+			return `
+			<div id="quota-card-${serverId}" class="card-enter bg-white rounded-3xl border border-slate-200 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col overflow-hidden">
+				
+				<!-- 顶部身份条：高度压缩 -->
+				<div class="flex items-center justify-between px-5 py-2 bg-slate-50/80 border-b border-slate-100">
+					<div class="flex items-center gap-1.5 min-w-0">
+						<i class="fa-solid fa-server text-[9px] text-slate-400"></i>
+						<span class="text-[10px] font-black text-slate-500 uppercase tracking-wider truncate">${config_name}</span>
+					</div>
+					<div class="flex items-center gap-1.5 bg-white/60 px-2 py-0.5 rounded border border-slate-200/50 shrink-0 ml-4">
+						<i class="fa-brands fa-google text-[9px] text-slate-400"></i>
+						<span class="text-[10px] font-bold font-mono text-slate-500 select-all" title="${projectId}">${projectId}</span>
+					</div>
+				</div>
+
+				<!-- 核心用户信息区：垂直内边距由 p-5 减小为 px-5 py-3.5 -->
+				<div class="px-5 py-3.5 flex items-center gap-3.5">
+					<div class="relative shrink-0">
+						<img src="${user.picture}" referrerpolicy="no-referrer" class="w-12 h-12 rounded-xl shadow-sm border-2 border-white object-cover">
+						<div class="absolute -bottom-1 -right-1 w-3.5 h-3.5 ${dotClass} border-[3px] border-white rounded-full shadow-sm"></div>
+					</div>
+
+					<div class="min-w-0 flex-1">
+						<div class="flex items-center leading-none mb-1">
+							<h3 class="font-extrabold text-slate-900 text-base truncate">${user.name}</h3>
+							${proBadge}
+						</div>
+						<div class="flex items-center gap-1 text-slate-400 text-xs">
+							<i class="fa-regular fa-envelope text-[9px]"></i>
+							<span class="truncate font-medium">${user.email}</span>
+						</div>
+					</div>
+				</div>
+
+				<!-- 配额列表区 -->
+				<div class="px-5 pb-4 flex-1 flex flex-col">
+					<div class="h-px bg-slate-100 w-full mb-3.5"></div>
+					<div class="space-y-0.5">
+						${quotasHtml || '<div class="py-4 text-center text-slate-400 text-sm italic">暂无配额数据</div>'}
+					</div>
+				</div>
+			</div>`;
+		}    </script>
+</body>
+</html>
