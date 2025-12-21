@@ -1,204 +1,101 @@
 ---
-title: Gemini CLI to API Proxy
-emoji: 🤖
-colorFrom: blue
-colorTo: purple
-sdk: docker
-pinned: false
-license: mit
-app_port: 7860
+
+# Gemini 多账号管理助手 (Gemini Manager)
+
+本项目是一个基于 FastAPI 的 Gemini 代理服务器增强版。它不仅能将 Google 的 Gemini 模型转换为兼容 OpenAI 的接口，还加入了一个强大的 **Web 可视化管理后台**，支持多账号平滑管理、多端口独立配置以及实时额度监控。
+
+> **核心优势**：告别繁琐的命令行和环境变量配置，一切操作均可在浏览器中完成。
+
 ---
 
-# Gemini CLI to API Proxy (geminicli2api)
+## 📸 界面预览
 
-A FastAPI-based proxy server that converts the Gemini CLI tool into both OpenAI-compatible and native Gemini API endpoints. This allows you to leverage Google's free Gemini API quota through familiar OpenAI API interfaces or direct Gemini API calls.
+| 代理服务管理 | 额度实时监控 |
+| :---: | :---: |
+| [![QQ-jie-tu20251221161557.jpg](https://i.postimg.cc/152P2X7T/QQ-jie-tu20251221161557.jpg)](https://postimg.cc/TpVZWd6q) | [![QQ-jie-tu20251221161738.jpg](https://i.postimg.cc/D0DV9p6Q/QQ-jie-tu20251221161738.jpg)](https://postimg.cc/XBwDF8TX) |
 
-## 🚀 Features
+---
 
-- **OpenAI-Compatible API**: Drop-in replacement for OpenAI's chat completions API
-- **Native Gemini API**: Direct proxy to Google's Gemini API
-- **Streaming Support**: Real-time streaming responses for both API formats
-- **Multimodal Support**: Text and image inputs
-- **Authentication**: Multiple auth methods (Bearer, Basic, API key)
-- **Google Search Grounding**: Enable Google Search for grounded responses using `-search` models.
-- **Thinking/Reasoning Control**: Control Gemini's thinking process with `-nothinking` and `-maxthinking` models.
-- **Docker Ready**: Containerized for easy deployment
-- **Hugging Face Spaces**: Ready for deployment on Hugging Face
+## ✨ 核心功能
 
-## 🔧 Environment Variables
+- 🖥️ **可视化面板**：提供直观的 Web 界面（默认 3000 端口），支持拖拽排序和一键启停。
+- 👥 **多账号管理**：支持导入多个 Google 凭证（JSON 文件），为不同账号分配独立端口。
+- 📊 **额度监控**：实时查看各账号的 `Pro` 和 `Flash` 模型剩余额度、重置时间及账号等级（Pro/普通）。
+- 🔌 **双模式接口**：
+    - **OpenAI 兼容模式**：提供 `/v1/chat/completions` 接口，支持主流 AI 客户端。
+    - **Native Gemini 模式**：完整转发 Google 官方 API 路径。
+- 🧠 **高级配置**：支持 `-search`（谷歌搜索）、`-maxthinking`（最大思维链）等模型变体。
+- 🖼️ **多模态支持**：完美处理文本、图片输入及流式输出。
 
-### Required
-- `GEMINI_AUTH_PASSWORD`: Authentication password for API access
+---
 
-### Optional Credential Sources (choose one)
-- `GEMINI_CREDENTIALS`: JSON string containing Google OAuth credentials
-- `GOOGLE_APPLICATION_CREDENTIALS`: Path to Google OAuth credentials file
-- `GOOGLE_CLOUD_PROJECT`: Google Cloud project ID
-- `GEMINI_PROJECT_ID`: Alternative project ID variable
+## 🛠️ 快速开始
 
-### Example Credentials JSON
-```json
-{
-  "client_id": "your-client-id",
-  "client_secret": "your-client-secret", 
-  "token": "your-access-token",
-  "refresh_token": "your-refresh-token",
-  "scopes": ["https://www.googleapis.com/auth/cloud-platform"],
-  "token_uri": "https://oauth2.googleapis.com/token"
-}
-```
-
-## 📡 API Endpoints
-
-### OpenAI-Compatible Endpoints
-- `POST /v1/chat/completions` - Chat completions (streaming & non-streaming)
-- `GET /v1/models` - List available models
-
-### Native Gemini Endpoints  
-- `GET /v1beta/models` - List Gemini models
-- `POST /v1beta/models/{model}:generateContent` - Generate content
-- `POST /v1beta/models/{model}:streamGenerateContent` - Stream content
-- All other Gemini API endpoints are proxied through
-
-### Utility Endpoints
-- `GET /health` - Health check for container orchestration
-
-## 🔐 Authentication
-
-The API supports multiple authentication methods:
-
-1. **Bearer Token**: `Authorization: Bearer YOUR_PASSWORD`
-2. **Basic Auth**: `Authorization: Basic base64(username:YOUR_PASSWORD)`
-3. **Query Parameter**: `?key=YOUR_PASSWORD`
-4. **Google Header**: `x-goog-api-key: YOUR_PASSWORD`
-
-## 🐳 Docker Usage
+### 1. 环境准备
+确保你的电脑已安装 Python 3.9+，然后克隆本项目并安装依赖：
 
 ```bash
-# Build the image
-docker build -t geminicli2api .
-
-# Run on default port 8888 (compatibility)
-docker run -p 8888:8888 \
-  -e GEMINI_AUTH_PASSWORD=your_password \
-  -e GEMINI_CREDENTIALS='{"client_id":"...","token":"..."}' \
-  -e PORT=8888 \
-  geminicli2api
-
-# Run on port 7860 (Hugging Face compatible)
-docker run -p 7860:7860 \
-  -e GEMINI_AUTH_PASSWORD=your_password \
-  -e GEMINI_CREDENTIALS='{"client_id":"...","token":"..."}' \
-  -e PORT=7860 \
-  geminicli2api
+git clone https://github.com/你的用户名/你的项目名.git
+cd 你的项目名
+pip install -r requirements.txt
 ```
 
-### Docker Compose
+### 2. 准备凭证 (Tokens)
+本项目通过读取 `tokens/` 目录下的 JSON 凭证文件来运行。
+1. 在项目根目录下创建 `tokens` 文件夹。
+2. 使用 `gemini-cli` 或其他工具完成 Google OAuth 登录。
+3. 将生成的凭证 JSON 文件（包含 `client_id`, `refresh_token` 等信息）放入 `tokens/` 目录。
+
+### 3. 启动管理面板
+运行以下命令启动 Web 管理后台：
 
 ```bash
-# Default setup (port 8888)
-docker-compose up -d
+python manager.py
+```
+启动后，在浏览器访问：**`http://localhost:3000`**
 
-# Hugging Face setup (port 7860)
-docker-compose --profile hf up -d geminicli2api-hf
+---
+
+## 📖 使用指南
+
+### 添加代理服务
+1. 在 Web 面板点击 **“添加服务”**。
+2. **凭证文件**：下拉选择你放入 `tokens/` 目录的 JSON 文件。
+3. **Project ID**：输入或从下拉列表选择你的 Google Cloud 项目 ID。
+4. **端口 & 密码**：为该账号设置独立的监听端口及访问密码（用于 API 调用鉴权）。
+5. 点击保存后，在列表点击 **“启动服务”**。
+
+### API 调用 (OpenAI 格式)
+服务启动后，你可以使用任何 OpenAI 客户端进行调用：
+- **Base URL**: `http://localhost:你的端口/v1`
+- **API Key**: 你在面板设置的密码
+- **模型名称示例**: 
+    - `gemini-2.5-pro-maxthinking` (开启深度思考)
+    - `gemini-2.5-flash-search` (开启谷歌搜索)
+
+---
+
+## 📂 项目结构
+
+```text
+├── manager.py          # Web 管理后台主程序
+├── run_proxy.py        # 代理服务运行脚本
+├── tokens/             # 存放 Google OAuth 凭证 JSON (手动创建)
+├── servers_config.json # 系统自动生成的服务器配置
+├── src/                # 代理转发核心代码
+└── templates/          # 可视化面板前端页面
 ```
 
-## 🤗 Hugging Face Spaces
+---
 
-This project is configured for Hugging Face Spaces deployment:
+## 🤝 鸣谢
 
-1. Fork this repository
-2. Create a new Space on Hugging Face
-3. Connect your repository
-4. Set the required environment variables in Space settings:
-   - `GEMINI_AUTH_PASSWORD`
-   - `GEMINI_CREDENTIALS` (or other credential source)
+本项目基于 [原作者项目名](原项目链接) 进行深度二次开发，感谢原作者在 Gemini 接口转发上的贡献。
 
-The Space will automatically build and deploy using the included Dockerfile.
+---
 
-## 📝 OpenAI API Example
+## 📄 开源协议
 
-```python
-import openai
+本项目采用 [MIT License](LICENSE) 协议发布。
 
-# Configure client to use your proxy
-client = openai.OpenAI(
-    base_url="http://localhost:8888/v1",  # or 7860 for HF
-    api_key="your_password"  # Your GEMINI_AUTH_PASSWORD
-)
-
-# Use like normal OpenAI API
-response = client.chat.completions.create(
-    model="gemini-2.5-pro-maxthinking",
-    messages=[
-        {"role": "user", "content": "Explain the theory of relativity in simple terms."}
-    ],
-    stream=True
-)
-
-# Separate reasoning from the final answer
-for chunk in response:
-    if chunk.choices[0].delta.reasoning_content:
-        print(f"Thinking: {chunk.choices[0].delta.reasoning_content}")
-    if chunk.choices[0].delta.content:
-        print(chunk.choices[0].delta.content, end="")
-```
-
-## 🔧 Native Gemini API Example
-
-```python
-import requests
-
-headers = {
-    "Authorization": "Bearer your_password",
-    "Content-Type": "application/json"
-}
-
-data = {
-    "contents": [
-        {
-            "role": "user",
-            "parts": [{"text": "Explain the theory of relativity in simple terms."}]
-        }
-    ],
-    "thinkingConfig": {
-        "thinkingBudget": 32768,
-        "includeThoughts": True
-    }
-}
-
-response = requests.post(
-    "http://localhost:8888/v1beta/models/gemini-2.5-pro:generateContent",  # or 7860 for HF
-    headers=headers,
-    json=data
-)
-
-print(response.json())
-```
-
-## 🎯 Supported Models
-
-### Base Models
-- `gemini-2.5-pro`
-- `gemini-2.5-flash`
-- `gemini-1.5-pro`
-- `gemini-1.5-flash`
-- `gemini-1.0-pro`
-
-### Model Variants
-The proxy automatically creates variants for `gemini-2.5-pro` and `gemini-2.5-flash` models:
-
-- **`-search`**: Appends `-search` to a model name to enable Google Search grounding.
-  - Example: `gemini-2.5-pro-search`
-- **`-nothinking`**: Appends `-nothinking` to minimize reasoning steps.
-  - Example: `gemini-2.5-flash-nothinking`
-- **`-maxthinking`**: Appends `-maxthinking` to maximize the reasoning budget.
-  - Example: `gemini-2.5-pro-maxthinking`
-
-## 📄 License
-
-MIT License - see LICENSE file for details.
-
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
+---
