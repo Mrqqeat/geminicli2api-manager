@@ -89,7 +89,7 @@ python manager.py
 
 ## 🤝 鸣谢
 
-本项目基于 [原作者项目名](原项目链接) 进行深度二次开发，感谢原作者在 Gemini 接口转发上的贡献。
+本项目基于 [geminicli2api](https://github.com/gzzhongqi/geminicli2api) 进行深度二次开发，感谢原作者在 Gemini 接口转发上的贡献。
 
 ---
 
