@@ -10,9 +10,8 @@
 
 ## 📸 界面预览
 
-| 代理服务管理 | 额度实时监控 |
-| :---: | :---: |
-| [![QQ-jie-tu20251221161557.jpg](https://i.postimg.cc/152P2X7T/QQ-jie-tu20251221161557.jpg)](https://postimg.cc/TpVZWd6q) | [![QQ-jie-tu20251221161738.jpg](https://i.postimg.cc/D0DV9p6Q/QQ-jie-tu20251221161738.jpg)](https://postimg.cc/XBwDF8TX) |
+![服务管理展示图](https://i.postimg.cc/152P2X7T/QQ-jie-tu20251221161557.jpg)
+![额度监控展示图](https://i.postimg.cc/D0DV9p6Q/QQ-jie-tu20251221161738.jpg)
 
 ---
 
