@@ -161,6 +161,10 @@
 							<i class="fa-solid fa-trash"></i>
 						</button>
 					</div>
+					<div class="flex gap-2">
+						<input type="text" id="new-pid-input" placeholder="输入新的 Project ID" class="flex-1 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all">
+						<button id="btn-add-pid" type="button" onclick="addPid()" class="px-5 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed">添加</button>
+					</div>
 				</div>
 
                 <div class="grid grid-cols-2 gap-4">
@@ -227,20 +231,29 @@
 
 		async function handleTokenChange() {
 			const tokenFile = document.getElementById('token-select').value;
-			if (!tokenFile) return;
 			
 			const pidSelect = document.getElementById('pid-select');
 			const submitBtn = document.querySelector('#server-form button[type="submit"]');
 			const refreshBtn = document.getElementById('btn-refresh-pid');
 			const removeBtn = document.getElementById('btn-remove-pid');
+			const addBtn = document.getElementById('btn-add-pid');
+			const pidInput = document.getElementById('new-pid-input');
 			
-			// 1. 进入刷新状态：禁用所有相关按钮，添加动画
-			const btns = [submitBtn, refreshBtn, removeBtn];
+			// 1. 如果没有选择凭证，禁用所有相关控件
+			if (!tokenFile) {
+				[submitBtn, refreshBtn, removeBtn, addBtn, pidInput].forEach(ctrl => {
+					if(ctrl) ctrl.disabled = true;
+				});
+				return;
+			}
+			
+			// 2. 进入刷新状态：禁用所有相关按钮和输入框
+			const btns = [submitBtn, refreshBtn, removeBtn, addBtn, pidInput];
 			btns.forEach(b => { if(b) b.disabled = true; });
+			
 			refreshBtn.querySelector('i').classList.add('animate-spin');
 			pidSelect.innerHTML = '<option value="">🔍 正在探测项目与内测资格...</option>';
 			
-			// 2. 超时控制：15秒自动断开请求
 			const controller = new AbortController();
 			const timeoutId = setTimeout(() => controller.abort(), 15000); 
 
@@ -261,7 +274,7 @@
 				const msg = e.name === 'AbortError' ? "请求超时，请重试" : "获取失败，请手动输入";
 				pidSelect.innerHTML = `<option value="">❌ ${msg}</option>`;
 			} finally {
-				// 3. 恢复状态：清除超时器，启用按钮，停止动画
+				// 3. 恢复状态：解除所有控件的禁用
 				clearTimeout(timeoutId);
 				btns.forEach(b => { if(b) b.disabled = false; });
 				refreshBtn.querySelector('i').classList.remove('animate-spin');
@@ -398,9 +411,8 @@
 			renderPidSelect();
 			await loadTokens();
 			
-			if (document.getElementById('token-select').value) {
-				handleTokenChange();
-			}
+			// 无论有没有值，都调用一次来初始化按钮的禁用状态
+			handleTokenChange();
 			
 			document.getElementById('modal-add').classList.replace('hidden', 'flex');
 		}
