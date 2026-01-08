@@ -1,3 +1,20 @@
+import requests
+from requests.packages.urllib3.exceptions import InsecureRequestWarning
+
+# 1. 禁用安全警告（避免控制台全是警告信息）
+requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+
+# 2. 备份原始的 request 方法
+old_request = requests.Session.request
+
+# 3. 重写 request 方法，强制设置 verify=False
+def new_request(*args, **kwargs):
+    kwargs['verify'] = False
+    return old_request(*args, **kwargs)
+
+requests.Session.request = new_request
+
+
 import os
 import uvicorn
 import sys
