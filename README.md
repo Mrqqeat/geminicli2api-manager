@@ -1,100 +1,118 @@
----
-
 # Gemini 多账号管理助手 (Gemini Manager)
 
 本项目是一个基于 FastAPI 的 Gemini 代理服务器增强版。它不仅能将 Google 的 Gemini 模型转换为兼容 OpenAI 的接口，还加入了一个强大的 **Web 可视化管理后台**，支持多账号平滑管理、多端口独立配置以及实时额度监控。
 
-> **核心优势**：告别繁琐的命令行和环境变量配置，一切操作均可在浏览器中完成。
+> **核心优势**：支持 **CLI** 与 **Antigravity** 双协议，告别繁琐的命令行配置，多账号额度一目了然。
 
 ---
 
 ## 📸 界面预览
 
 ![服务管理展示图](https://i.postimg.cc/152P2X7T/QQ-jie-tu20251221161557.jpg)
-![额度监控展示图](https://i.postimg.cc/D0DV9p6Q/QQ-jie-tu20251221161738.jpg)
+![额度监控展示图](https://i.postimg.cc/wjLqzLJ7/V3V-Q-8VG7-EH5Y9D-I26.png)
+![额度监控展示图](https://i.postimg.cc/wB9pdPgw/QQ-jie-tu20260108225842.jpg)
 
 ---
 
 ## ✨ 核心功能
 
 - 🖥️ **可视化面板**：提供直观的 Web 界面（默认 3000 端口），支持拖拽排序和一键启停。
-- 👥 **多账号管理**：支持导入多个 Google 凭证（JSON 文件），为不同账号分配独立端口。
-- 📊 **额度监控**：实时查看各账号的 `Pro` 和 `Flash` 模型剩余额度、重置时间及账号等级（Pro/普通）。
+- 👥 **多账号管理**：支持导入多个 Google 凭证，支持 **CLI** 和 **Antigravity** 两种授权类型。
+- 📊 **智能额度监控**：实时计算各模型分组的剩余次数，支持自动识别账号等级（Pro/普通）。
 - 🔌 **双模式接口**：
-    - **OpenAI 兼容模式**：提供 `/v1/chat/completions` 接口，支持主流 AI 客户端。
+    - **OpenAI 兼容模式**：提供 `/v1/chat/completions` 接口。
     - **Native Gemini 模式**：完整转发 Google 官方 API 路径。
-- 🧠 **高级配置**：支持 `-search`（谷歌搜索）、`-maxthinking`（最大思维链）等模型变体。
-- 🖼️ **多模态支持**：完美处理文本、图片输入及流式输出。
+- 🧠 **高级变体支持**：支持 `-search`（搜索）、`-maxthinking`（最大思维链）、`-nothinking`（禁用思考）。
+
+---
+
+## 📈 配额与使用规则
+
+### 1. Gemini CLI 模式 (每日刷新)
+| 模型分组 | 对应模型范围 | Pro 账号额度 | 非 Pro (内测项目) |
+| :--- | :--- | :--- | :--- |
+| **Flash 组** | 2.0-flash, 2.5-flash, 2.5-flash-Lite | 1500 次 | 1000 次 |
+| **3-Flash 组** | 3-Flash-Preview | 1500 次 | 1000 次 |
+| **Pro 组** | 2.5-Pro, 3-Pro-Preview | 250 次 | 100 次 |
+
+> **注意**：
+> - **Pro 用户**：可以使用账号自己可用的 Project ID。
+> - **非 Pro 用户**：若使用“自己的项目 ID”（非官方内测 ID），将**无法访问 3.0 系列模型**，其余配额同上。
+
+---
+
+### 2. Google Antigravity 模式 (每 6 小时刷新)
+| 模型分组 | 对应模型示例 | Pro 账号额度 |
+| :--- | :--- | :--- |
+| **2.5 Flash 组** | 2.5-flash, 2.5-flash-thinking | 3000 次 |
+| **2.5 Lite 组** | 2.5-flash-lite | 5000 次 |
+| **3.0 Flash 组** | 3-flash | 400 次 |
+| **3.0 Pro 组** | 3-pro-low, 3-pro-high | 320 次 |
+| **3.0 Image 组** | 3-pro-image | 20 次 |
+| **Claude/GPT 组** | Claude 3.5/4.5, GPT-OSS | 150 次 |
+| **其他模型组** | rev19-uic3-1p | 500 次 |
+
+> **账号分类说明**：
+> - **Pro 账号**：享受上述高频配额，每 6 小时重置一次。
+> - **非 Pro (使用内测项目)**：由于是公共项目，**无固定次数限制**（随便用），但部分高级模型不可用。
+> - **非 Pro (使用自己项目)**：目前官方已停用此组合，**无法使用**。
 
 ---
 
 ## 🛠️ 快速开始
 
-### 1. 环境准备
-确保你的电脑已安装 Python 3.9+，然后克隆本项目并安装依赖：
-
+### 1. 安装环境
 ```bash
-git clone https://github.com/Mrqqeat/geminicli2api-manager.git
-cd geminicli2api-manager
+git clone https://github.com/Mrqqeat/gemini2api-manager.git
+cd gemini2api-manager
 pip install -r requirements.txt
 ```
 
-### 2. 准备凭证 (Tokens)
-本项目通过读取 `tokens/` 目录下的 JSON 凭证文件来运行。
-1. 在项目根目录下创建 `tokens` 文件夹。
-2. 使用 `gemini-cli` 或其他工具完成 Google OAuth 登录。
-3. 将生成的凭证 JSON 文件（包含 `client_id`, `refresh_token` 等信息）放入 `tokens/` 目录。
+### 2. 获取凭证 (Tokens)
+- **手动方式**：将生成的 `email.json` 放入 `tokens/cli/` 或 `tokens/antigravity/` 目录。
+- **自动方式**：启动管理后台后，直接在网页点击 **“登录添加”** 按钮，按照 Google 提示完成 OAuth 授权。
 
-### 3. 启动管理面板
-运行以下命令启动 Web 管理后台：
-
+### 3. 运行
 ```bash
 python manager.py
 ```
-启动后，在浏览器访问：**`http://localhost:3000`**
+访问：**`http://localhost:3000`**
 
 ---
 
 ## 📖 使用指南
 
-### 添加代理服务
-1. 在 Web 面板点击 **“添加服务”**。
-2. **凭证文件**：下拉选择你放入 `tokens/` 目录的 JSON 文件。
-3. **Project ID**：输入或从下拉列表选择你的 Google Cloud 项目 ID。
-4. **端口 & 密码**：为该账号设置独立的监听端口及访问密码（用于 API 调用鉴权）。
-5. 点击保存后，在列表点击 **“启动服务”**。
+### 添加服务
+1. 点击 **“添加服务”**。
+2. 选择 **服务类型**（CLI 或 Antigravity）。
+3. **Project ID 探测**：点击刷新图标，系统会自动拉取该账号下的内测项目、云项目或随机生成项目。
+4. 设置端口和密码并启动。
 
-### API 调用 (OpenAI 格式)
-服务启动后，你可以使用任何 OpenAI 客户端进行调用：
-- **Base URL**: `http://localhost:你的端口/v1`
-- **API Key**: 你在面板设置的密码
-- **模型名称示例**: 
-    - `gemini-2.5-pro-maxthinking` (开启深度思考)
-    - `gemini-2.5-flash-search` (开启谷歌搜索)
+### 模型后缀说明
+调用 API 时，可以通过模型名后缀开启高级功能：
+- `...-search`: 强制开启谷歌搜索。
+- `...-maxthinking`: 强制分配最大思考预算。
+- `...-nothinking`: 彻底禁用思考过程以节省输出速度。
 
 ---
 
 ## 📂 项目结构
-
 ```text
-├── manager.py          # Web 管理后台主程序
-├── run_proxy.py        # 代理服务运行脚本
-├── tokens/             # 存放 Google OAuth 凭证 JSON (手动创建)
-├── servers_config.json # 系统自动生成的服务器配置
-├── src/                # 代理转发核心代码
-└── templates/          # 可视化面板前端页面
+├── manager.py          # Web 管理后台
+├── run_proxy.py        # 代理服务启动器
+├── tokens/             
+│   ├── cli/            # 存放 CLI 协议凭证
+│   └── antigravity/    # 存放 Antigravity 协议凭证
+├── src/                # 核心转发逻辑
+└── static/templates/   # 前端资源
 ```
 
 ---
 
 ## 🤝 鸣谢
-
-本项目基于 [geminicli2api](https://github.com/gzzhongqi/geminicli2api) 进行深度二次开发，感谢原作者在 Gemini 接口转发上的贡献。
+本项目核心转发逻辑基于 [geminicli2api](https://github.com/gzzhongqi/geminicli2api) 二次开发，感谢原作者。
 
 ---
 
 ## 📄 开源协议
-
-本项目采用 [MIT License](LICENSE) 协议发布。
-
----
+[MIT License](LICENSE)
